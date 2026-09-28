@@ -1,0 +1,31 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+alembic = "==1.20.0"
+bcrypt = "==5.0.0"
+blinker = "==1.9.0"
+click = "==8.5.0"
+itsdangerous = "==2.2.0"
+jinja2 = "==3.1.6"
+mako = "==1.4.3"
+markupsafe = "==3.0.3"
+pyjwt = "==2.15.0"
+sqlalchemy = "==2.1.1"
+typing-extensions = "==4.16.0"
+werkzeug = "==3.1.9"
+flask = "*"
+flask-sqlalchemy = "*"
+flask-migrate = "*"
+flask-bcrypt = "*"
+flask-jwt-extended = "*"
+flask-cors = "*"
+python-dotenv = "*"
+gunicorn = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.13"
