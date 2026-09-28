@@ -24,6 +24,7 @@ flask-jwt-extended = "*"
 flask-cors = "*"
 python-dotenv = "*"
 gunicorn = "*"
+psycopg = {extras = ["binary"], version = "*"}
 
 [dev-packages]
 
