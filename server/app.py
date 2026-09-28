@@ -1,7 +1,10 @@
 from config import app, db
 from flask import jsonify
-from models import users, note, book
+
+from models import User, Book, Note
 from routes.books import books_bp
+from routes.notes import notes_bp
+from routes.auth import auth_bp
 
 
 @app.route("/api/health", methods=["GET"])
@@ -11,6 +14,8 @@ def health_check():
 
 # Register Blueprints
 app.register_blueprint(books_bp)
+app.register_blueprint(notes_bp)
+app.register_blueprint(auth_bp)
 
 
 @app.route("/")

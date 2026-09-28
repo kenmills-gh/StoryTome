@@ -9,10 +9,13 @@ notes_bp = Blueprint("notes", __name__, url_prefix="/notes")
 @notes_bp.route("", methods=["GET", "POST"])  # type: ignore
 def handle_notes():
     if request.method == "GET":
-        # Support filtering notes by book_id via query param: /notes?book_id=1
         book_id = request.args.get("book_id")
         if book_id:
-            notes = Note.query.filter_by(book_id=book_id).all()
+            try:
+                # Cast string query parameter to integer
+                notes = Note.query.filter_by(book_id=int(book_id)).all()
+            except ValueError:
+                return jsonify({"error": "book_id must be an integer"}), 400
         else:
             notes = Note.query.all()
         return jsonify([note.to_dict() for note in notes]), 200
