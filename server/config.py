@@ -33,4 +33,8 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 migrate = Migrate(app, db)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(
+    app,
+    supports_credentials=True,
+    origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+)
