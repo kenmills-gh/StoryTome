@@ -7,6 +7,7 @@ os.environ["SECRET_KEY"] = "storytome-test-secret"
 from app import app
 from config import db
 from models import Book, Note, User
+from sqlalchemy.exc import SQLAlchemyError
 
 
 class ApiOwnershipTests(unittest.TestCase):
@@ -55,6 +56,40 @@ class ApiOwnershipTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/books").status_code, 401)
         self.assertEqual(self.client.get("/api/notes").status_code, 401)
 
+    def test_http_errors_return_json(self):
+        missing = self.client.get("/api/books/not-an-integer")
+        self.assertEqual(missing.status_code, 404)
+        self.assertIn("error", missing.get_json())
+
+        unsupported = self.client.put("/api/books")
+        self.assertEqual(unsupported.status_code, 405)
+        self.assertIn("error", unsupported.get_json())
+
+    def test_database_errors_return_generic_json(self):
+        with app.test_request_context("/api/books"):
+            response = app.handle_user_exception(
+                SQLAlchemyError("sensitive database detail")
+            )
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.get_json(), {"error": "A database error occurred."})
+
+    def test_signup_login_session_and_logout_flow(self):
+        signup = self.client.post(
+            "/api/auth/signup",
+            json={
+                "username": "new_reader",
+                "email": "new_reader@example.com",
+                "password": "password123",
+            },
+        )
+        self.assertEqual(signup.status_code, 201)
+        self.assertEqual(self.client.get("/api/auth/me").status_code, 200)
+
+        self.assertEqual(self.client.delete("/api/auth/logout").status_code, 200)
+        self.assertEqual(self.client.get("/api/auth/me").status_code, 401)
+        self.assertEqual(self._login("new_reader").status_code, 200)
+        self.assertEqual(self.client.get("/api/auth/me").status_code, 200)
+
     def test_book_creation_uses_session_user_and_hides_other_users_books(self):
         self.assertEqual(self._login("reader_one").status_code, 200)
         response = self.client.post(
@@ -87,12 +122,15 @@ class ApiOwnershipTests(unittest.TestCase):
         )
         self.assertEqual(updated.status_code, 200)
         self.assertEqual(updated.get_json()["current_page"], 40)
+        self.assertEqual(self.client.get(f"/api/books/{book_id}").status_code, 200)
         self.assertEqual(
             self.client.patch(
                 f"/api/books/{book_id}", json={"user_id": self.second_user.id}
             ).status_code,
             400,
         )
+        self.assertEqual(self.client.delete(f"/api/books/{book_id}").status_code, 200)
+        self.assertEqual(self.client.get(f"/api/books/{book_id}").status_code, 404)
 
     def test_notes_are_owned_by_the_authenticated_user(self):
         book = Book(user_id=self.first_user.id, title="A Book", author="An Author")
@@ -101,11 +139,24 @@ class ApiOwnershipTests(unittest.TestCase):
         self._login("reader_one")
         response = self.client.post(
             "/api/notes",
-            json={"book_id": book.id, "content": "A private note"},
+            json={
+                "book_id": book.id,
+                "content": "A private recap",
+                "note_type": "Chapter Recap",
+                "chapter_num": 1,
+            },
         )
         self.assertEqual(response.status_code, 201)
         note_id = response.get_json()["id"]
         self.assertEqual(db.session.get(Note, note_id).user_id, self.first_user.id)
+        self.assertEqual(response.get_json()["note_type"], "Chapter Recap")
+        self.assertEqual(self.client.get("/api/notes").get_json()[0]["id"], note_id)
+        self.assertEqual(self.client.get(f"/api/notes/{note_id}").status_code, 200)
+        updated = self.client.patch(
+            f"/api/notes/{note_id}", json={"content": "Updated private note"}
+        )
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.get_json()["content"], "Updated private note")
 
         self._login("reader_two")
         self.assertEqual(self.client.get("/api/notes").get_json(), [])
@@ -123,6 +174,10 @@ class ApiOwnershipTests(unittest.TestCase):
             404,
         )
         self.assertEqual(self.client.delete(f"/api/notes/{note_id}").status_code, 404)
+
+        self._login("reader_one")
+        self.assertEqual(self.client.delete(f"/api/notes/{note_id}").status_code, 200)
+        self.assertEqual(self.client.get(f"/api/notes/{note_id}").status_code, 404)
 
 
 if __name__ == "__main__":

@@ -5,8 +5,10 @@ import NotesModal from "../components/NoteModal"
 
 export default function Dashboard() {
   const [books, setBooks] = useState([]);
+  const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [savingBook, setSavingBook] = useState(false);
   
   // Notes Modal state
   const [selectedBookForNotes, setSelectedBookForNotes] = useState(null);
@@ -14,6 +16,7 @@ export default function Dashboard() {
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [noteSearchTerm, setNoteSearchTerm] = useState("");
 
   // New book form state
   const [showForm, setShowForm] = useState(false);
@@ -26,9 +29,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch("/books")
-      .then((data) => {
-        if (!cancelled) setBooks(data);
+    Promise.all([apiFetch("/books"), apiFetch("/notes")])
+      .then(([bookData, noteData]) => {
+        if (!cancelled) {
+          setBooks(bookData);
+          setNotes(noteData);
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message || "Failed to load books");
@@ -44,6 +50,8 @@ export default function Dashboard() {
 
   const handleAddBook = async (e) => {
     e.preventDefault();
+    setSavingBook(true);
+    setError("");
     try {
       const newBook = await apiFetch("/books", {
         method: "POST",
@@ -57,7 +65,7 @@ export default function Dashboard() {
           total_pages: Number.parseInt(totalPages, 10) || 0,
         }),
       });
-      setBooks([...books, newBook]);
+      setBooks((currentBooks) => [...currentBooks, newBook]);
       setShowForm(false);
       setTitle("");
       setAuthor("");
@@ -67,13 +75,15 @@ export default function Dashboard() {
       setTotalPages("");
     } catch (err) {
       setError(err.message || "Failed to add book");
+    } finally {
+      setSavingBook(false);
     }
   };
 
   const handleDelete = async (id) => {
     try {
       await apiFetch(`/books/${id}`, { method: "DELETE" });
-      setBooks(books.filter((b) => b.id !== id));
+      setBooks((currentBooks) => currentBooks.filter((book) => book.id !== id));
     } catch (err) {
       setError(err.message || "Failed to delete book");
     }
@@ -95,7 +105,9 @@ export default function Dashboard() {
           status: updatedStatus,
         }),
       });
-      setBooks(books.map((b) => (b.id === id ? updatedBook : b)));
+      setBooks((currentBooks) =>
+        currentBooks.map((book) => (book.id === id ? updatedBook : book))
+      );
     } catch (err) {
       setError(err.message || "Failed to update book progress");
     }
@@ -114,6 +126,26 @@ export default function Dashboard() {
 
     return matchesSearch && matchesStatus;
   });
+  const pagesRead = books.reduce((total, book) => total + book.current_page, 0);
+  const statusCounts = {
+    reading: books.filter((book) => book.status === "Currently Reading").length,
+    wanted: books.filter((book) => book.status === "Want to Read").length,
+    completed: books.filter((book) => book.status === "Completed").length,
+  };
+  const noteQuery = noteSearchTerm.toLowerCase().trim();
+  const filteredNotes = [...notes]
+    .sort((first, second) => Date.parse(second.created_at) - Date.parse(first.created_at))
+    .filter((note) => {
+      const book = books.find((item) => item.id === note.book_id);
+      const searchableText = [
+        note.content,
+        note.note_type,
+        note.chapter_num == null ? "" : `chapter ${note.chapter_num}`,
+        book?.title || "",
+      ].join(" ").toLowerCase();
+      return searchableText.includes(noteQuery);
+    });
+  const visibleNotes = noteQuery ? filteredNotes : filteredNotes.slice(0, 6);
 
   if (loading) return <div style={{ padding: "2rem", color: "#fff" }}>Loading your bookshelf...</div>;
 
@@ -127,6 +159,13 @@ export default function Dashboard() {
       </div>
 
       {error && <p style={styles.error}>{error}</p>}
+
+      <section style={styles.stats} aria-label="Reading summary">
+        <div style={styles.stat}><span>Currently reading</span><strong>{statusCounts.reading}</strong></div>
+        <div style={styles.stat}><span>Want to read</span><strong>{statusCounts.wanted}</strong></div>
+        <div style={styles.stat}><span>Completed</span><strong>{statusCounts.completed}</strong></div>
+        <div style={styles.stat}><span>Pages read</span><strong>{pagesRead.toLocaleString()}</strong></div>
+      </section>
 
       {showForm && (
         <form onSubmit={handleAddBook} style={styles.form}>
@@ -162,6 +201,7 @@ export default function Dashboard() {
             />
             <input
               type="number"
+              min="1"
               placeholder="Total Pages"
               required
               value={totalPages}
@@ -178,7 +218,9 @@ export default function Dashboard() {
               <option value="Completed">Completed</option>
             </select>
           </div>
-          <button type="submit" style={styles.submitBtn}>Save Book</button>
+          <button type="submit" disabled={savingBook} style={styles.submitBtn}>
+            {savingBook ? "Saving..." : "Save Book"}
+          </button>
         </form>
       )}
 
@@ -202,6 +244,45 @@ export default function Dashboard() {
           <option value="Completed">Completed</option>
         </select>
       </div>
+
+      <section style={styles.notesSection} aria-labelledby="recent-notes-heading">
+        <div style={styles.notesHeading}>
+          <h3 id="recent-notes-heading">Recent Notes</h3>
+          <input
+            type="search"
+            aria-label="Search notes by book, chapter, type, or text"
+            placeholder="Search notes by book, chapter, type, or text..."
+            value={noteSearchTerm}
+            onChange={(e) => setNoteSearchTerm(e.target.value)}
+            style={styles.searchInput}
+          />
+        </div>
+        {filteredNotes.length === 0 ? (
+          <p style={styles.emptyNotes}>
+            {notes.length === 0 ? "Your saved notes will appear here." : "No notes match your search."}
+          </p>
+        ) : (
+          <div style={styles.notesList}>
+            {visibleNotes.map((note) => {
+              const book = books.find((item) => item.id === note.book_id);
+              return (
+                <button
+                  key={note.id}
+                  type="button"
+                  onClick={() => book && setSelectedBookForNotes(book)}
+                  style={styles.noteResult}
+                >
+                  <span style={styles.noteMeta}>
+                    {book?.title || "Book"} · {note.note_type}
+                    {note.chapter_num ? ` · Chapter ${note.chapter_num}` : ""}
+                  </span>
+                  <span style={styles.notePreview}>{note.content}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <div style={styles.bookList}>
         {books.length === 0 ? (
@@ -274,6 +355,7 @@ export default function Dashboard() {
         <NotesModal
           book={selectedBookForNotes}
           onClose={() => setSelectedBookForNotes(null)}
+          onNotesChange={setNotes}
         />
       )}
     </div>
@@ -281,10 +363,13 @@ export default function Dashboard() {
 }
 
 const styles = {
-  container: { padding: "2rem", maxWidth: "900px", width: "100%", boxSizing: "border-box", margin: "0 auto" },
+  container: { padding: "2rem", maxWidth: "1120px", width: "100%", boxSizing: "border-box", margin: "0 auto" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" },
   addBtn: { backgroundColor: "#3182ce", color: "#fff", border: "none", padding: "0.6rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
   error: { color: "#fc8181", marginBottom: "1rem" },
+  stats: { display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "1rem", marginBottom: "1.5rem" },
+  stat: { display: "flex", flexDirection: "column", gap: "0.35rem", padding: "1rem 1.25rem", backgroundColor: "#2b2b2b", borderBottom: "2px solid #3182ce", borderRadius: "4px", color: "#a0aec0" },
+  statValue: { color: "#fff" },
   form: { backgroundColor: "#2b2b2b", padding: "1.5rem", borderRadius: "8px", marginBottom: "1.5rem" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: "1rem", marginBottom: "1rem" },
   input: { padding: "0.75rem", borderRadius: "4px", border: "1px solid #444", backgroundColor: "#1a1a1a", color: "#fff" },
@@ -292,7 +377,14 @@ const styles = {
   filterContainer: { display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" },
   searchInput: { flex: "2 1 260px", minWidth: 0, padding: "0.65rem 1rem", borderRadius: "6px", border: "1px solid #444", backgroundColor: "#2b2b2b", color: "#fff", fontSize: "0.95rem", boxSizing: "border-box" },
   filterSelect: { flex: "1 1 180px", minWidth: 0, padding: "0.65rem 1rem", borderRadius: "6px", border: "1px solid #444", backgroundColor: "#2b2b2b", color: "#fff", fontSize: "0.95rem", boxSizing: "border-box" },
-  bookList: { display: "flex", flexDirection: "column", gap: "1rem" },
+  notesSection: { margin: "0 0 1.75rem", paddingBottom: "1.5rem", borderBottom: "1px solid #3d3d3d" },
+  notesHeading: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", marginBottom: "0.75rem" },
+  notesList: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "0.75rem" },
+  noteResult: { display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "0.35rem", padding: "0.8rem 1rem", textAlign: "left", backgroundColor: "#242424", border: "1px solid #3d3d3d", borderRadius: "4px", color: "#e2e8f0", cursor: "pointer" },
+  noteMeta: { color: "#63b3ed", fontSize: "0.8rem" },
+  notePreview: { display: "-webkit-box", overflow: "hidden", WebkitBoxOrient: "vertical", WebkitLineClamp: 2 },
+  emptyNotes: { color: "#a0aec0", padding: "0.75rem 0" },
+  bookList: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 460px), 1fr))", alignItems: "start", gap: "1rem" },
   emptyState: { color: "#a0aec0", textAlign: "center", padding: "2rem 0" },
   card: { backgroundColor: "#2b2b2b", padding: "1.5rem", borderRadius: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },

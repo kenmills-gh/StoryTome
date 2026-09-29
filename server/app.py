@@ -1,10 +1,24 @@
 from config import app, db
 from flask import jsonify
+from sqlalchemy.exc import SQLAlchemyError
+from werkzeug.exceptions import HTTPException
 
 from models import User, Book, Note
 from routes.books import books_bp
 from routes.notes import notes_bp
 from routes.auth import auth_bp
+
+
+@app.errorhandler(HTTPException)
+def handle_http_error(error):
+    return jsonify({"error": error.description}), error.code or 500
+
+
+@app.errorhandler(SQLAlchemyError)
+def handle_database_error(error):
+    db.session.rollback()
+    app.logger.error("Database error while handling request")
+    return jsonify({"error": "A database error occurred."}), 500
 
 
 @app.route("/api/health", methods=["GET"])

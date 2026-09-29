@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
-import { apiFetch } from "../services/api";
+import { apiFetch, UNAUTHORIZED_EVENT } from "../services/api";
 import { AuthContext } from "./authContext";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const clearUser = () => setUser(null);
+    window.addEventListener(UNAUTHORIZED_EVENT, clearUser);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, clearUser);
+  }, []);
 
   // Check active session on initial app load
   useEffect(() => {

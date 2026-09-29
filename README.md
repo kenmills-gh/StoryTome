@@ -2,6 +2,43 @@
 
 StoryTome is a full-stack reading tracker for organizing a personal bookshelf, tracking page progress, and keeping notes tied to each book. It uses a React/Vite client and a Flask API backed by SQLAlchemy. Flask cookie sessions authenticate users; each user's books and notes are private to that account.
 
+The implementation uses signed Flask sessions rather than the pitch's proposed JWT/localStorage flow. This is an intentional assignment-supported alternative: the browser sends an HttpOnly session cookie and does not store a bearer token in localStorage.
+
+## Data Model
+
+```mermaid
+erDiagram
+	USERS ||--o{ BOOKS : owns
+	USERS ||--o{ NOTES : writes
+	BOOKS ||--o{ NOTES : contains
+
+	USERS {
+		int id PK
+		string username
+		string email
+		string password_hash
+	}
+	BOOKS {
+		int id PK
+		int user_id FK
+		string title
+		string author
+		string series_name
+		int series_order
+		string status
+		int current_page
+		int total_pages
+	}
+	NOTES {
+		int id PK
+		int user_id FK
+		int book_id FK
+		int chapter_num
+		string note_type
+		string content
+	}
+```
+
 ## Requirements
 
 - Python 3.13

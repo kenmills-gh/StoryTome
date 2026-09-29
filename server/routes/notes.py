@@ -5,7 +5,14 @@ from models import Note, Book
 from routes.auth_helpers import login_required
 
 notes_bp = Blueprint("notes", __name__, url_prefix="/api/notes")
-NOTE_TYPES = {"Chapter Note", "Character Log", "Character Note", "Quote", "Theory"}
+NOTE_TYPES = {
+    "Chapter Note",
+    "Chapter Recap",
+    "Character Log",
+    "Character Note",
+    "Quote",
+    "Theory",
+}
 NOTE_FIELDS = {"chapter_num", "note_type", "content"}
 
 
