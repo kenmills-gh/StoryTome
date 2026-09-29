@@ -13,19 +13,22 @@ export default function NotesModal({ book, onClose }) {
   const [content, setContent] = useState("");
 
   useEffect(() => {
-    fetchNotes();
-  }, [book.id]);
+    let cancelled = false;
+    apiFetch(`/notes?book_id=${book.id}`)
+      .then((data) => {
+        if (!cancelled) setNotes(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || "Failed to load notes");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
-  const fetchNotes = async () => {
-    try {
-      const data = await apiFetch(`/notes?book_id=${book.id}`);
-      setNotes(data);
-    } catch (err) {
-      setError(err.message || "Failed to load notes");
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [book.id]);
 
   const handleAddNote = async (e) => {
     e.preventDefault();

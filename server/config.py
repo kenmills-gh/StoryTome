@@ -21,10 +21,15 @@ DB_PATH = INSTANCE_DIR / "storytome.db"
 DEFAULT_DB_URI = f"sqlite:///{DB_PATH.as_posix()}"
 
 # Core Configuration
-app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev_secret_key_storytome_2026")
-app.config["JWT_SECRET_KEY"] = os.getenv(
-    "JWT_SECRET_KEY", "jwt_dev_secret_key_storytome_2026"
-)
+APP_ENV = os.getenv("APP_ENV", "development").lower()
+SECRET_KEY = os.getenv("SECRET_KEY")
+if APP_ENV == "production" and not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY must be configured in production.")
+
+app.config["SECRET_KEY"] = SECRET_KEY or "dev-only-storytome-secret-key"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = APP_ENV == "production"
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URI", DEFAULT_DB_URI)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -33,8 +38,7 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 migrate = Migrate(app, db)
-CORS(
-    app,
-    supports_credentials=True,
-    origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+allowed_origins = os.getenv(
+    "CLIENT_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
 )
+CORS(app, supports_credentials=True, origins=[origin.strip() for origin in allowed_origins.split(",") if origin.strip()])

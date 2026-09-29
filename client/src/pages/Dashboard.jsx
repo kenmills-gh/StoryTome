@@ -11,6 +11,10 @@ export default function Dashboard() {
   // Notes Modal state
   const [selectedBookForNotes, setSelectedBookForNotes] = useState(null);
 
+  // Search & Filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("All");
+
   // New book form state
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -20,19 +24,22 @@ export default function Dashboard() {
   const [status, setStatus] = useState("Want to Read");
   const [totalPages, setTotalPages] = useState("");
 
-  const fetchBooks = async () => {
-    try {
-      const data = await apiFetch("/books");
-      setBooks(data);
-    } catch (err) {
-      setError(err.message || "Failed to load books");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchBooks();
+    let cancelled = false;
+    apiFetch("/books")
+      .then((data) => {
+        if (!cancelled) setBooks(data);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || "Failed to load books");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleAddBook = async (e) => {
@@ -47,7 +54,7 @@ export default function Dashboard() {
           series_order: seriesOrder ? parseInt(seriesOrder) : null,
           status,
           current_page: 0,
-          total_pages: parseInt(totalPages) || 0,
+          total_pages: Number.parseInt(totalPages, 10) || 0,
         }),
       });
       setBooks([...books, newBook]);
@@ -73,10 +80,12 @@ export default function Dashboard() {
   };
 
   const handleUpdatePages = async (id, newPage, total) => {
-    const pageNum = parseInt(newPage) || 0;
-    let updatedStatus = status;
-    if (pageNum >= total && total > 0) updatedStatus = "Completed";
-    else if (pageNum > 0) updatedStatus = "Currently Reading";
+    const pageNum = Math.min(Math.max(Number.parseInt(newPage, 10) || 0, 0), total);
+    const updatedStatus = pageNum === 0
+      ? "Want to Read"
+      : pageNum >= total
+        ? "Completed"
+        : "Currently Reading";
 
     try {
       const updatedBook = await apiFetch(`/books/${id}`, {
@@ -91,6 +100,20 @@ export default function Dashboard() {
       setError(err.message || "Failed to update book progress");
     }
   };
+
+  // Filter logic
+  const filteredBooks = books.filter((book) => {
+    const query = searchTerm.toLowerCase().trim();
+    const matchesSearch =
+      book.title.toLowerCase().includes(query) ||
+      book.author.toLowerCase().includes(query) ||
+      (book.series_name && book.series_name.toLowerCase().includes(query));
+
+    const matchesStatus =
+      filterStatus === "All" || book.status === filterStatus;
+
+    return matchesSearch && matchesStatus;
+  });
 
   if (loading) return <div style={{ padding: "2rem", color: "#fff" }}>Loading your bookshelf...</div>;
 
@@ -131,6 +154,7 @@ export default function Dashboard() {
             />
             <input
               type="number"
+              min="1"
               placeholder="Series # (Optional)"
               value={seriesOrder}
               onChange={(e) => setSeriesOrder(e.target.value)}
@@ -158,11 +182,34 @@ export default function Dashboard() {
         </form>
       )}
 
+      {/* Search and Status Filter Bar */}
+      <div style={styles.filterContainer}>
+        <input
+          type="text"
+          placeholder="🔍 Search title, author, or series..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={styles.searchInput}
+        />
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          style={styles.filterSelect}
+        >
+          <option value="All">All Statuses</option>
+          <option value="Currently Reading">Currently Reading</option>
+          <option value="Want to Read">Want to Read</option>
+          <option value="Completed">Completed</option>
+        </select>
+      </div>
+
       <div style={styles.bookList}>
         {books.length === 0 ? (
-          <p>Your bookshelf is empty. Add a book to get started!</p>
+          <p style={styles.emptyState}>Your bookshelf is empty. Add a book to get started!</p>
+        ) : filteredBooks.length === 0 ? (
+          <p style={styles.emptyState}>No books found matching your search criteria.</p>
         ) : (
-          books.map((book) => {
+          filteredBooks.map((book) => {
             const progressPercent = book.total_pages > 0 
               ? Math.min(100, Math.round((book.current_page / book.total_pages) * 100))
               : 0;
@@ -194,9 +241,11 @@ export default function Dashboard() {
 
                 <div style={styles.cardActions}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <label style={{ fontSize: "0.85rem" }}>Update Page:</label>
+                    <label style={{ fontSize: "0.85rem", color: "#e2e8f0" }}>Update Page:</label>
                     <input
                       type="number"
+                      min="0"
+                      max={book.total_pages}
                       defaultValue={book.current_page}
                       onBlur={(e) => handleUpdatePages(book.id, e.target.value, book.total_pages)}
                       style={styles.pageInput}
@@ -232,15 +281,19 @@ export default function Dashboard() {
 }
 
 const styles = {
-  container: { padding: "2rem", maxWidth: "900px", margin: "0 auto" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" },
+  container: { padding: "2rem", maxWidth: "900px", width: "100%", boxSizing: "border-box", margin: "0 auto" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" },
   addBtn: { backgroundColor: "#3182ce", color: "#fff", border: "none", padding: "0.6rem 1.2rem", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
   error: { color: "#fc8181", marginBottom: "1rem" },
-  form: { backgroundColor: "#2b2b2b", padding: "1.5rem", borderRadius: "8px", marginBottom: "2rem" },
-  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" },
+  form: { backgroundColor: "#2b2b2b", padding: "1.5rem", borderRadius: "8px", marginBottom: "1.5rem" },
+  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 220px), 1fr))", gap: "1rem", marginBottom: "1rem" },
   input: { padding: "0.75rem", borderRadius: "4px", border: "1px solid #444", backgroundColor: "#1a1a1a", color: "#fff" },
   submitBtn: { width: "100%", padding: "0.75rem", backgroundColor: "#38a169", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
+  filterContainer: { display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "1.5rem" },
+  searchInput: { flex: "2 1 260px", minWidth: 0, padding: "0.65rem 1rem", borderRadius: "6px", border: "1px solid #444", backgroundColor: "#2b2b2b", color: "#fff", fontSize: "0.95rem", boxSizing: "border-box" },
+  filterSelect: { flex: "1 1 180px", minWidth: 0, padding: "0.65rem 1rem", borderRadius: "6px", border: "1px solid #444", backgroundColor: "#2b2b2b", color: "#fff", fontSize: "0.95rem", boxSizing: "border-box" },
   bookList: { display: "flex", flexDirection: "column", gap: "1rem" },
+  emptyState: { color: "#a0aec0", textAlign: "center", padding: "2rem 0" },
   card: { backgroundColor: "#2b2b2b", padding: "1.5rem", borderRadius: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
   bookTitle: { margin: 0, padding: 0, fontSize: "1.25rem", fontWeight: "bold", lineHeight: "1.2", color: "#fff" },
@@ -257,7 +310,7 @@ const styles = {
   progressBarBg: { backgroundColor: "#1a1a1a", borderRadius: "4px", height: "8px", overflow: "hidden" },
   progressBarFill: { backgroundColor: "#3182ce", height: "100%", transition: "width 0.3s ease" },
   progressText: { display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "#a0aec0", marginTop: "0.4rem" },
-  cardActions: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #3d3d3d" },
+  cardActions: { display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: "0.75rem", marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #3d3d3d" },
   pageInput: { width: "70px", padding: "0.4rem", borderRadius: "4px", border: "1px solid #444", backgroundColor: "#1a1a1a", color: "#fff" },
   notesBtn: { backgroundColor: "#4a5568", color: "#fff", border: "none", padding: "0.4rem 0.8rem", borderRadius: "4px", cursor: "pointer" },
   deleteBtn: { backgroundColor: "transparent", color: "#e53e3e", border: "1px solid #e53e3e", padding: "0.4rem 0.8rem", borderRadius: "4px", cursor: "pointer" },

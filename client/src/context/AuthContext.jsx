@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { apiFetch } from "../services/api";
-
-const AuthContext = createContext(null);
+import { AuthContext } from "./authContext";
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -9,14 +8,14 @@ export function AuthProvider({ children }) {
 
   // Check active session on initial app load
   useEffect(() => {
-    apiFetch("/me")
+    apiFetch("/auth/me")
       .then((userData) => setUser(userData))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
   const login = async (username, password) => {
-    const userData = await apiFetch("/login", {
+    const userData = await apiFetch("/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     });
@@ -25,7 +24,7 @@ export function AuthProvider({ children }) {
   };
 
   const signup = async (username, email, password) => {
-    const userData = await apiFetch("/signup", {
+    const userData = await apiFetch("/auth/signup", {
       method: "POST",
       body: JSON.stringify({ username, email, password }),
     });
@@ -34,7 +33,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
-    await apiFetch("/logout", { method: "DELETE" });
+    await apiFetch("/auth/logout", { method: "DELETE" });
     setUser(null);
   };
 
@@ -44,5 +43,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-export const useAuth = () => useContext(AuthContext);

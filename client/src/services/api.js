@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5555";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export async function apiFetch(endpoint, options = {}) {
   const defaultHeaders = {
@@ -14,10 +14,12 @@ export async function apiFetch(endpoint, options = {}) {
     credentials: "include", // Essential for passing Flask session cookies
   });
 
-  const data = await response.json();
+  const data = response.headers.get("content-type")?.includes("application/json")
+    ? await response.json()
+    : null;
 
   if (!response.ok) {
-    throw new Error(data.error || "Something went wrong");
+    throw new Error(data?.error || "Something went wrong");
   }
 
   return data;
