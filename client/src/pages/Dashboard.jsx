@@ -1,11 +1,15 @@
 // client/src/pages/Dashboard.jsx
 import { useState, useEffect } from "react";
 import { apiFetch } from "../services/api";
+import NotesModal from "../components/NoteModal"
 
 export default function Dashboard() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // Notes Modal state
+  const [selectedBookForNotes, setSelectedBookForNotes] = useState(null);
 
   // New book form state
   const [showForm, setShowForm] = useState(false);
@@ -167,7 +171,7 @@ export default function Dashboard() {
               <div key={book.id} style={styles.card}>
                 <div style={styles.cardHeader}>
                   <div>
-                    <h3 style={{ margin: 0 }}>{book.title}</h3>
+                    <h3 style={styles.bookTitle}>{book.title}</h3>
                     <p style={styles.author}>by {book.author}</p>
                     {book.series_name && (
                       <p style={styles.series}>
@@ -198,15 +202,31 @@ export default function Dashboard() {
                       style={styles.pageInput}
                     />
                   </div>
-                  <button onClick={() => handleDelete(book.id)} style={styles.deleteBtn}>
-                    Delete
-                  </button>
+                  
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      onClick={() => setSelectedBookForNotes(book)}
+                      style={styles.notesBtn}
+                    >
+                      📝 Notes
+                    </button>
+                    <button onClick={() => handleDelete(book.id)} style={styles.deleteBtn}>
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })
         )}
       </div>
+
+      {selectedBookForNotes && (
+        <NotesModal
+          book={selectedBookForNotes}
+          onClose={() => setSelectedBookForNotes(null)}
+        />
+      )}
     </div>
   );
 }
@@ -223,8 +243,9 @@ const styles = {
   bookList: { display: "flex", flexDirection: "column", gap: "1rem" },
   card: { backgroundColor: "#2b2b2b", padding: "1.5rem", borderRadius: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.2)" },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
-  author: { margin: "0.25rem 0", color: "#a0aec0", fontSize: "0.95rem" },
-  series: { margin: "0", color: "#63b3ed", fontSize: "0.85rem" },
+  bookTitle: { margin: 0, padding: 0, fontSize: "1.25rem", fontWeight: "bold", lineHeight: "1.2", color: "#fff" },
+  author: { margin: "0.35rem 0 0 0", padding: 0, color: "#a0aec0", fontSize: "0.95rem" },
+  series: { margin: "0.25rem 0 0 0", padding: 0, color: "#63b3ed", fontSize: "0.85rem" },
   badge: (status) => ({
     padding: "0.25rem 0.75rem",
     borderRadius: "12px",
@@ -238,5 +259,6 @@ const styles = {
   progressText: { display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "#a0aec0", marginTop: "0.4rem" },
   cardActions: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #3d3d3d" },
   pageInput: { width: "70px", padding: "0.4rem", borderRadius: "4px", border: "1px solid #444", backgroundColor: "#1a1a1a", color: "#fff" },
+  notesBtn: { backgroundColor: "#4a5568", color: "#fff", border: "none", padding: "0.4rem 0.8rem", borderRadius: "4px", cursor: "pointer" },
   deleteBtn: { backgroundColor: "transparent", color: "#e53e3e", border: "1px solid #e53e3e", padding: "0.4rem 0.8rem", borderRadius: "4px", cursor: "pointer" },
 };
