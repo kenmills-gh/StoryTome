@@ -1,42 +1,38 @@
-import { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
-import { apiFetch } from "./services/api";
+import Navbar from "./components/Navbar";
+import Login from "./pages/Login";
+import Signup from "./pages/Signup";
+import Dashboard from "./pages/Dashboard";
+
+// Protected Route Guard
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div>Loading session...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
 
 function App() {
-  const { user, loading, logout } = useAuth();
-  const [books, setBooks] = useState([]);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    apiFetch("/books")
-      .then((data) => setBooks(data))
-      .catch((err) => setError(err.message));
-  }, []);
-
-  if (loading) return <div>Loading StoryTome...</div>;
-
   return (
-    <div style={{ padding: "20px", fontFamily: "sans-serif" }}>
-      <h1>StoryTome</h1>
-      {user ? (
-        <div>
-          <p>Logged in as: <strong>{user.username}</strong> ({user.email})</p>
-          <button onClick={logout}>Log Out</button>
-        </div>
-      ) : (
-        <p>Not logged in (Demo Mode / Guest)</p>
-      )}
-
-      <h2>Seeded Bookshelf</h2>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      <ul>
-        {books.map((book) => (
-          <li key={book.id}>
-            <strong>{book.title}</strong> by {book.author} — Status: {book.status} (Page {book.current_page}/{book.total_pages})
-          </li>
-        ))}
-      </ul>
-    </div>
+    <Router>
+      <div style={{ minHeight: "100vh", backgroundColor: "#1a1a1a", color: "#f1f1f1" }}>
+        <Navbar />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
