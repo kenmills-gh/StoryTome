@@ -1,133 +1,207 @@
 # StoryTome
 
-StoryTome is a full-stack reading tracker for organizing a personal bookshelf, tracking page progress, and keeping notes tied to each book. It uses a React/Vite client and a Flask API backed by SQLAlchemy. Flask cookie sessions authenticate users; each user's books and notes are private to that account.
+A private reading companion for readers following long fantasy and fiction series. StoryTome organizes a personal bookshelf, tracks page progress, and keeps chapter recaps, character notes, quotes, and theories connected to the book they belong to.
 
-The implementation uses signed Flask sessions rather than the pitch's proposed JWT/localStorage flow. This is an intentional assignment-supported alternative: the browser sends an HttpOnly session cookie and does not store a bearer token in localStorage.
+## Project Overview
 
-## Data Model
+High-level shelf apps are useful for tracking what someone reads, but they are not designed to help readers remember the details of a long series. StoryTome keeps personal annotations alongside each book so readers can revisit their own notes without relying on scattered apps or spoiler-heavy public wikis.
+
+The application supports:
+
+- Personal accounts with password hashing and signed Flask sessions
+- A private bookshelf with series order, status, and page-progress tracking
+- Search and status filtering for books
+- Chapter notes, recaps, character notes, quotes, and theories attached to books
+- Searchable recent notes, including search by book, chapter, note type, and content
+- Ownership checks on book and note API operations
+
+An AI-powered spoiler-free lore and recap companion is a possible future extension; it is not part of the current implementation.
+
+## Demo Access
+
+There is no public deployment yet. Run the application locally using the setup steps below.
+
+The local seed script creates this development account:
+
+| Username | Password |
+|---|---|
+| `demo_user` | `password123` |
+
+These credentials are for local review only. Do not use the seeded account or password in a deployed environment.
+
+## Architecture
+
+| Layer | Technology | Responsibility |
+|---|---|---|
+| Client | React, Vite, React Router | Login and signup, protected dashboard, bookshelf interactions, note search and editing |
+| API | Python, Flask, Flask-SQLAlchemy | Session authentication, validation, user-scoped CRUD endpoints, JSON errors |
+| Data | SQLAlchemy, SQLite by default, PostgreSQL supported | Users, books, notes, and their relationships |
+
+### Authentication and Request Flow
+
+1. A user signs up or logs in through `/api/auth`.
+2. Flask verifies the password hash and establishes a signed, HttpOnly session cookie.
+3. The React client sends that cookie with API requests; it does not store a bearer token in localStorage.
+4. Protected API routes derive the user identity from the session and only return or mutate records owned by that user.
+5. If an API request returns `401`, the client clears its authenticated state and protected navigation returns to login.
+
+The project pitch proposed JWT authentication. This implementation uses Flask sessions instead, which is an allowed option for the assignment and avoids keeping an authentication token in browser localStorage.
+
+### Data Model
 
 ```mermaid
 erDiagram
-	USERS ||--o{ BOOKS : owns
-	USERS ||--o{ NOTES : writes
-	BOOKS ||--o{ NOTES : contains
+    USERS ||--o{ BOOKS : owns
+    USERS ||--o{ NOTES : writes
+    BOOKS ||--o{ NOTES : contains
 
-	USERS {
-		int id PK
-		string username
-		string email
-		string password_hash
-	}
-	BOOKS {
-		int id PK
-		int user_id FK
-		string title
-		string author
-		string series_name
-		int series_order
-		string status
-		int current_page
-		int total_pages
-	}
-	NOTES {
-		int id PK
-		int user_id FK
-		int book_id FK
-		int chapter_num
-		string note_type
-		string content
-	}
+    USERS {
+        int id PK
+        string username
+        string email
+        string password_hash
+    }
+    BOOKS {
+        int id PK
+        int user_id FK
+        string title
+        string author
+        string series_name
+        int series_order
+        string status
+        int current_page
+        int total_pages
+    }
+    NOTES {
+        int id PK
+        int user_id FK
+        int book_id FK
+        int chapter_num
+        string note_type
+        string content
+    }
 ```
 
-## Requirements
+## Repository Structure
+
+```text
+StoryTome/
+├── client/
+│   ├── public/
+│   └── src/
+│       ├── components/    # Navbar and note modal
+│       ├── context/       # Authentication provider and hook
+│       ├── pages/         # Login, signup, and bookshelf dashboard
+│       └── services/      # API fetch helper
+└── server/
+    ├── instance/          # Local SQLite database (git-ignored)
+    ├── migrations/        # Alembic configuration and revisions
+    ├── models/            # User, Book, and Note models
+    ├── routes/            # Auth, book, and note endpoints
+    └── tests/             # API auth, CRUD, and ownership tests
+```
+
+## Local Quick Start
+
+### Prerequisites
 
 - Python 3.13
 - Pipenv
 - Node.js and npm
 
-## Development Setup
+### 1. Configure and start the API
 
-1. In `server/`, install backend dependencies and configure environment variables:
+From the repository root in PowerShell:
 
-	```powershell
-	cd server
-	pipenv install
-	Copy-Item .env.example .env
-	```
+```powershell
+cd server
+pipenv install
+Copy-Item .env.example .env
+```
 
-	Set `SECRET_KEY` in `server/.env` to a unique random value. The default database is a SQLite file under `server/instance/`.
+Set `SECRET_KEY` in `server/.env` to a unique random value. The default database is SQLite at `server/instance/storytome.db`; set `DATABASE_URI` in `.env` if you want to use another supported SQLAlchemy database.
 
-2. Initialize the database and start Flask:
+For a fresh database, run the migration and seed the local demo account:
 
-	```powershell
-	pipenv run flask --app app db upgrade
-	pipenv run flask --app app run --port 5555
-	```
+```powershell
+pipenv run flask --app app db upgrade
+pipenv run python seed.py
+pipenv run flask --app app run --port 5555
+```
 
-	If the database already contains tables created by `seed.py` or `db.create_all()`, back it up first and run `pipenv run flask --app app db stamp head` instead of `db upgrade` to mark that matching schema as migrated.
+If the database already has tables created with `db.create_all()` or an earlier seed script, back it up and inspect its schema before applying migrations. When its schema matches the initial revision, mark it with `pipenv run flask --app app db stamp head` instead of running `db upgrade` against those existing tables.
 
-3. In another terminal, install client dependencies and start Vite:
+### 2. Start the client
 
-	```powershell
-	cd client
-	npm install
-	npm run dev
-	```
+Open a second terminal at the repository root:
 
-	Open the URL printed by Vite, usually `http://localhost:5173`.
+```powershell
+cd client
+npm install
+npm run dev
+```
 
-For a local demo dataset, run `pipenv run python seed.py` from `server/`. It creates a development account (`demo_user` / `password123`); never use this seeded account in a deployed environment.
+Open the local URL printed by Vite, usually `http://localhost:5173`. Vite forwards `/api` requests to Flask on port `5555`.
 
-## Environment Variables
+## API Reference
 
-| Variable | Purpose | Default |
-|---|---|---|
-| `APP_ENV` | Set to `production` to require a configured secret and secure session cookies. | `development` |
-| `SECRET_KEY` | Signs Flask session cookies. Required in production. | Development-only value |
-| `DATABASE_URI` | SQLAlchemy database URL. | Local SQLite database |
-| `CLIENT_ORIGINS` | Comma-separated allowed browser origins when cross-origin hosting is used. | Local Vite origins |
-| `VITE_API_BASE_URL` | Client API base path or URL. | `/api` |
-
-Keep secrets in environment variables. Do not commit `.env` files.
-
-## API Routes
-
-Authentication routes are under `/api/auth`:
+Authentication endpoints:
 
 | Method | Route | Purpose |
 |---|---|---|
-| `POST` | `/api/auth/signup` | Create an account and start a session. |
-| `POST` | `/api/auth/login` | Authenticate and start a session. |
-| `DELETE` | `/api/auth/logout` | End the active session. |
-| `GET` | `/api/auth/me` | Return the active user. |
+| `POST` | `/api/auth/signup` | Create an account and start a session |
+| `POST` | `/api/auth/login` | Verify credentials and start a session |
+| `DELETE` | `/api/auth/logout` | End the active session |
+| `GET` | `/api/auth/me` | Return the signed-in user |
 
-Authenticated resource routes:
+Authenticated book endpoints:
 
 | Method | Route | Purpose |
 |---|---|---|
-| `GET`, `POST` | `/api/books` | List the current user's books or create a book. |
-| `GET`, `PATCH`, `DELETE` | `/api/books/<id>` | Read, update, or delete an owned book. |
-| `GET`, `POST` | `/api/notes` | List owned notes (optionally by `book_id`) or create a note for an owned book. |
-| `GET`, `PATCH`, `DELETE` | `/api/notes/<id>` | Read, update, or delete an owned note. |
-| `GET` | `/api/health` | API health check. |
+| `GET`, `POST` | `/api/books` | List the current user's books or create a book |
+| `GET`, `PATCH`, `DELETE` | `/api/books/<id>` | Read, update, or delete an owned book |
 
-## Checks
+Authenticated note endpoints:
 
-From `server/`, run backend authorization tests:
+| Method | Route | Purpose |
+|---|---|---|
+| `GET`, `POST` | `/api/notes` | List owned notes or create a note for an owned book; accepts optional `book_id` on GET |
+| `GET`, `PATCH`, `DELETE` | `/api/notes/<id>` | Read, update, or delete an owned note |
+| `GET` | `/api/health` | Check API health |
+
+Handled HTTP and database errors return JSON with an appropriate HTTP status. Resource routes check ownership on reads and writes; clients cannot assign records to another user by submitting a `user_id`.
+
+## Verification
+
+Run the backend tests from `server/`:
 
 ```powershell
 pipenv run python -m unittest discover -s tests -v
 ```
 
-From `client/`, run frontend checks:
+Run client checks from `client/`:
 
 ```powershell
 npm run lint
 npm run build
 ```
 
-## Production Notes
+The backend tests use an isolated in-memory SQLite database and cover session authentication, resource CRUD, and cross-user access restrictions.
 
-Set `APP_ENV=production`, provide a strong `SECRET_KEY`, and set `DATABASE_URI`. Prefer serving the client and API from the same site (for example, behind a reverse proxy); `CLIENT_ORIGINS` only configures CORS and does not make cross-site session cookies work. Serve the API over HTTPS; secure session cookies are enabled in production. Run migrations with `flask --app app db upgrade` as part of deployment.
+## Configuration and Deployment Notes
 
-Run Flask behind a production WSGI server, for example `pipenv run gunicorn -w 2 -b 0.0.0.0:5555 app:app` from `server/`; terminate HTTPS at your hosting platform or reverse proxy.
+| Variable | Purpose | Default |
+|---|---|---|
+| `APP_ENV` | Set to `production` to require an explicit secret and enable secure session cookies | `development` |
+| `SECRET_KEY` | Signs Flask session cookies; required in production | Development-only fallback |
+| `DATABASE_URI` | SQLAlchemy database connection | Local SQLite |
+| `CLIENT_ORIGINS` | Comma-separated allowed browser origins for cross-origin hosting | Local Vite origins |
+| `VITE_API_BASE_URL` | Client API base path or URL | `/api` |
+
+Keep `.env` files and secrets out of Git. For production, serve over HTTPS, provide a strong `SECRET_KEY`, configure a persistent `DATABASE_URI`, and run the Flask API behind a production WSGI server. Prefer hosting the frontend and API on the same site; CORS settings alone do not enable cross-site session cookies.
+
+No public deployment URL is configured yet. Add verified frontend and API links here after deployment rather than pointing reviewers to a placeholder.
+
+## Project Value
+
+StoryTome focuses on the gap between a reading-status tracker and a detailed personal annotation system. By binding private notes to a reader's books and chapters, it supports series organization, progress tracking, and spoiler-conscious recall in one place.
