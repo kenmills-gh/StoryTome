@@ -117,19 +117,20 @@ From the repository root in PowerShell:
 cd server
 pipenv install
 Copy-Item .env.example .env
+pipenv shell
 ```
 
-Set `SECRET_KEY` in `server/.env` to a unique random value. The default database is SQLite at `server/instance/storytome.db`; set `DATABASE_URI` in `.env` if you want to use another supported SQLAlchemy database.
+Set `SECRET_KEY` in `server/.env` to a unique random value, then enter the Pipenv shell in that terminal. Run the remaining backend commands from this active shell. The default database is SQLite at `server/instance/storytome.db`; set `DATABASE_URI` in `.env` if you want to use another supported SQLAlchemy database.
 
 For a fresh database, run the migration and seed the local demo account:
 
 ```powershell
-pipenv run flask --app app db upgrade
-pipenv run python seed.py
-pipenv run flask --app app run --port 5555
+flask --app app db upgrade
+python seed.py
+flask --app app run --port 5555
 ```
 
-If the database already has tables created with `db.create_all()` or an earlier seed script, back it up and inspect its schema before applying migrations. When its schema matches the initial revision, mark it with `pipenv run flask --app app db stamp head` instead of running `db upgrade` against those existing tables.
+If the database already has tables created with `db.create_all()` or an earlier seed script, back it up and inspect its schema before applying migrations. When its schema matches the initial revision, mark it with `flask --app app db stamp head` instead of running `db upgrade` against those existing tables.
 
 ### 2. Start the client
 
@@ -173,10 +174,11 @@ Handled HTTP and database errors return JSON with an appropriate HTTP status. Re
 
 ## Verification
 
-Run the backend tests from `server/`:
+From `server/`, activate the Pipenv environment and run the backend tests:
 
 ```powershell
-pipenv run python -m unittest discover -s tests -v
+pipenv shell
+python -m unittest discover -s tests -v
 ```
 
 Run client checks from `client/`:
@@ -198,7 +200,14 @@ The backend tests use an isolated in-memory SQLite database and cover session au
 | `CLIENT_ORIGINS` | Comma-separated allowed browser origins for cross-origin hosting | Local Vite origins |
 | `VITE_API_BASE_URL` | Client API base path or URL | `/api` |
 
-Keep `.env` files and secrets out of Git. For production, serve over HTTPS, provide a strong `SECRET_KEY`, configure a persistent `DATABASE_URI`, and run the Flask API behind a production WSGI server. Prefer hosting the frontend and API on the same site; CORS settings alone do not enable cross-site session cookies.
+Keep `.env` files and secrets out of Git. For production, serve over HTTPS, provide a strong `SECRET_KEY`, configure a persistent `DATABASE_URI`, and run the Flask API behind a production WSGI server. From `server/`, activate Pipenv and start Gunicorn with:
+
+```powershell
+pipenv shell
+gunicorn -w 2 -b 0.0.0.0:5555 app:app
+```
+
+Prefer hosting the frontend and API on the same site; CORS settings alone do not enable cross-site session cookies.
 
 No public deployment URL is configured yet. Add verified frontend and API links here after deployment rather than pointing reviewers to a placeholder.
 

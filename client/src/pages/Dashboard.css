@@ -55,6 +55,11 @@
   background: #4a5568;
 }
 
+.button--save-progress {
+  padding: 0.4rem 0.65rem;
+  background: #38a169;
+}
+
 .button--delete {
   border: 1px solid #e53e3e;
   background: transparent;
@@ -100,6 +105,15 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 1rem;
   margin-bottom: 1rem;
+}
+
+.book-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  color: #e2e8f0;
+  font-size: 0.85rem;
 }
 
 .dashboard-input {
@@ -210,6 +224,17 @@
   grid-column: 1 / -1;
   padding: 2rem 0;
   text-align: center;
+}
+
+.book-list__empty button,
+.recent-notes__empty button {
+  margin-left: 0.5rem;
+  border: 1px solid #63b3ed;
+  border-radius: 4px;
+  padding: 0.3rem 0.65rem;
+  background: transparent;
+  color: #90cdf4;
+  cursor: pointer;
 }
 
 .book-list {

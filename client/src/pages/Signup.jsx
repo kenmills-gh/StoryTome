@@ -7,17 +7,21 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { signup } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
     try {
       await signup(username, email, password);
       navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Signup failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -25,12 +29,14 @@ export default function Signup() {
     <div style={styles.container}>
       <form onSubmit={handleSubmit} style={styles.card}>
         <h2>Create Account</h2>
-        {error && <p style={styles.error}>{error}</p>}
+        {error && <p style={styles.error} role="alert">{error}</p>}
 
         <div style={styles.inputGroup}>
-          <label>Username</label>
+          <label htmlFor="signup-username">Username</label>
           <input
+            id="signup-username"
             type="text"
+            autoComplete="username"
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -39,9 +45,11 @@ export default function Signup() {
         </div>
 
         <div style={styles.inputGroup}>
-          <label>Email</label>
+          <label htmlFor="signup-email">Email</label>
           <input
+            id="signup-email"
             type="email"
+            autoComplete="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -50,9 +58,11 @@ export default function Signup() {
         </div>
 
         <div style={styles.inputGroup}>
-          <label>Password</label>
+          <label htmlFor="signup-password">Password</label>
           <input
+            id="signup-password"
             type="password"
+            autoComplete="new-password"
             required
             minLength={8}
             value={password}
@@ -61,7 +71,9 @@ export default function Signup() {
           />
         </div>
 
-        <button type="submit" style={styles.button}>Sign Up</button>
+        <button type="submit" disabled={isSubmitting} style={styles.button}>
+          {isSubmitting ? "Creating account..." : "Sign Up"}
+        </button>
         <p style={{ marginTop: "1rem", textAlign: "center" }}>
           Already have an account? <Link to="/login" style={{ color: "#63b3ed" }}>Login</Link>
         </p>

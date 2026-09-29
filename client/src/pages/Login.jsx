@@ -6,17 +6,21 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
     try {
       await login(username, password);
       navigate("/dashboard");
     } catch (err) {
       setError(err.message || "Invalid username or password");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -24,12 +28,14 @@ export default function Login() {
     <div style={styles.container}>
       <form onSubmit={handleSubmit} style={styles.card}>
         <h2>Sign In to StoryTome</h2>
-        {error && <p style={styles.error}>{error}</p>}
+        {error && <p style={styles.error} role="alert">{error}</p>}
         
         <div style={styles.inputGroup}>
-          <label>Username</label>
+          <label htmlFor="login-username">Username</label>
           <input
+            id="login-username"
             type="text"
+            autoComplete="username"
             required
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -38,9 +44,11 @@ export default function Login() {
         </div>
 
         <div style={styles.inputGroup}>
-          <label>Password</label>
+          <label htmlFor="login-password">Password</label>
           <input
+            id="login-password"
             type="password"
+            autoComplete="current-password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -48,7 +56,9 @@ export default function Login() {
           />
         </div>
 
-        <button type="submit" style={styles.button}>Login</button>
+        <button type="submit" disabled={isSubmitting} style={styles.button}>
+          {isSubmitting ? "Signing in..." : "Login"}
+        </button>
         <p style={{ marginTop: "1rem", textAlign: "center" }}>
           Don't have an account? <Link to="/signup" style={{ color: "#63b3ed" }}>Sign Up</Link>
         </p>
