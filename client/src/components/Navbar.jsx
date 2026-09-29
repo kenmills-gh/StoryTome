@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
+import "./Navbar.css";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -11,33 +12,23 @@ export default function Navbar() {
   };
 
   return (
-    <nav style={styles.nav}>
-      <Link to="/dashboard" style={styles.logo}>
+    <nav className="navbar">
+      <Link to="/dashboard" className="navbar__logo">
         📖 StoryTome
       </Link>
-      <div>
+      <div className="navbar__content">
         {user ? (
-          <div style={styles.userSection}>
+          <div className="navbar__user">
             <span>Welcome, <strong>{user.username}</strong></span>
-            <button onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
+            <button onClick={handleLogout} className="navbar__logout">Logout</button>
           </div>
         ) : (
-          <div style={styles.authLinks}>
-            <Link to="/login" style={styles.link}>Login</Link>
-            <Link to="/signup" style={styles.signupBtn}>Sign Up</Link>
+          <div className="navbar__auth-links">
+            <Link to="/login" className="navbar__link">Login</Link>
+            <Link to="/signup" className="navbar__signup">Sign Up</Link>
           </div>
         )}
       </div>
     </nav>
   );
 }
-
-const styles = {
-  nav: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem 2rem", backgroundColor: "#2b2b2b", borderBottom: "1px solid #333" },
-  logo: { fontSize: "1.5rem", fontWeight: "bold", color: "#fff", textDecoration: "none" },
-  userSection: { display: "flex", alignItems: "center", gap: "1rem" },
-  logoutBtn: { backgroundColor: "#e53e3e", color: "#fff", border: "none", padding: "0.5rem 1rem", borderRadius: "4px", cursor: "pointer" },
-  authLinks: { display: "flex", gap: "1rem", alignItems: "center" },
-  link: { color: "#fff", textDecoration: "none" },
-  signupBtn: { backgroundColor: "#3182ce", color: "#fff", padding: "0.5rem 1rem", borderRadius: "4px", textDecoration: "none" }
-};
