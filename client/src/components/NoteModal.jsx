@@ -102,6 +102,8 @@ export default function NotesModal({ book, onClose, onNotesChange }) {
   };
 
   const handleDeleteNote = async (id) => {
+    if (!window.confirm("Delete this note? This action cannot be undone.")) return;
+
     setDeletingNoteId(id);
     setError("");
     try {
