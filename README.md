@@ -17,6 +17,24 @@ The application supports:
 
 An AI-powered spoiler-free lore and recap companion is a possible future extension; it is not part of the current implementation.
 
+## Screenshots
+
+### Login
+
+![StoryTome login screen](screenshots/login.png)
+
+### Dashboard
+
+![StoryTome bookshelf dashboard](screenshots/dashboard.png)
+
+### Notes modal
+
+![StoryTome notes modal](screenshots/notes-modal.png)
+
+### Add a book
+
+![StoryTome add book form](screenshots/add-book.png)
+
 ## Demo Access
 
 There is no public deployment yet. Run the application locally using the setup steps below.
