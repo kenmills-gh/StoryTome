@@ -140,14 +140,14 @@ Copy-Item .env.example .env
 pipenv shell
 ```
 
-Set `SECRET_KEY` in `server/.env` to a unique random value, then enter the Pipenv shell in that terminal. Run the remaining backend commands from this active shell. The default database is SQLite at `server/instance/storytome.db`; set `DATABASE_URI` in `.env` if you want to use another supported SQLAlchemy database.
+Set `SECRET_KEY` in `server/.env` to a unique random value, then enter the Pipenv shell in that terminal. Run the remaining backend commands from this active shell. The default database is SQLite at `server/instance/storytome.db`. To use PostgreSQL, replace `DATABASE_URI` in `.env` with your PostgreSQL connection string before starting the API.
 
 For a fresh database, run the migration and seed the local demo account:
 
 ```powershell
 flask --app app db upgrade
 python seed.py
-flask --app app run --port 5555
+python app.py
 ```
 
 If the database already has tables created with `db.create_all()` or an earlier seed script, back it up and inspect its schema before applying migrations. When its schema matches the initial revision, mark it with `flask --app app db stamp head` instead of running `db upgrade` against those existing tables.
