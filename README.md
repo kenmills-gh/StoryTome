@@ -19,21 +19,23 @@ An AI-powered spoiler-free lore and recap companion is a possible future extensi
 
 ## Screenshots
 
+Screenshots are stored in the [`screenshots/`](screenshots/) folder.
+
 ### Login
 
-![StoryTome login screen](screenshots/login.png)
+![StoryTome login screen](screenshots/ST-Login.png)
 
 ### Dashboard
 
-![StoryTome bookshelf dashboard](screenshots/dashboard.png)
+![StoryTome bookshelf dashboard](screenshots/ST-Dashboard.png)
 
 ### Notes modal
 
-![StoryTome notes modal](screenshots/notes-modal.png)
+![StoryTome notes modal](screenshots/ST-Notes.png)
 
 ### Add a book
 
-![StoryTome add book form](screenshots/add-book.png)
+![StoryTome add book form](screenshots/ST-Addbook.png)
 
 ## Demo Access
 
